@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "postgresql-mcp": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@henkey/postgres-mcp-server"
+            ]
+        }
+    }
+}

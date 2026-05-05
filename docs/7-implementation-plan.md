@@ -47,10 +47,10 @@ FE-003 + FE-004 → FE-005
 - `.gitignore`에 `.env.development`, `.env.production`, `.env.test` 추가 (`.env.example` 제외)
 
 **완료 조건**
-- [ ] `.env.example`에 `DATABASE_URL`, `DATABASE_URL_TEST` 항목 존재
-- [ ] `docker-compose.dev.yml` 실행 후 PostgreSQL 접속 성공
-- [ ] 잘못된 `DATABASE_URL` 입력 시 앱 기동 실패 (zod 오류)
-- [ ] `.gitignore`에 실제 `.env` 파일 포함, `.env.example`은 git 추적
+- [x] `.env.example`에 `DATABASE_URL`, `DATABASE_URL_TEST` 항목 존재
+- [ ] `docker-compose.dev.yml` 실행 후 PostgreSQL 접속 성공 (Docker 미설치 — 로컬 PostgreSQL 17로 대체 운용)
+- [x] 잘못된 `DATABASE_URL` 입력 시 앱 기동 실패 (zod 오류)
+- [x] `.gitignore`에 실제 `.env` 파일 포함, `.env.example`은 git 추적
 
 **의존성**: 없음 | **예상 소요시간**: 1h
 
