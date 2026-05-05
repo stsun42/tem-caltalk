@@ -1,0 +1,1720 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Team CalTalk API",
+    "version": "1.0.0",
+    "description": "팀 캘린더 + 채팅 통합 협업 플랫폼 API"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1",
+      "description": "로컬 개발 서버"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Access Token (HS256). 만료: 15분. 만료 시 POST /auth/refresh로 재발급."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "김인선"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Active", "Inactive"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "name", "email", "status", "createdAt", "updatedAt"]
+      },
+      "Team": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "프론트엔드 팀"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Active", "Deleted"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "name", "status", "createdAt", "updatedAt"]
+      },
+      "TeamWithRole": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Team" },
+          {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": ["TEAM_LEADER", "TEAM_MEMBER"]
+              }
+            },
+            "required": ["role"]
+          }
+        ]
+      },
+      "UserTeamRole": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["TEAM_LEADER", "TEAM_MEMBER"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "userId", "teamId", "role", "createdAt"]
+      },
+      "TeamMember": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "이준호"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["TEAM_LEADER", "TEAM_MEMBER"]
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["userId", "name", "email", "role", "joinedAt"]
+      },
+      "Invitation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inviterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inviteeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Pending", "Accepted", "Declined", "Expired"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "초대 만료 일시 (발송 후 7일)"
+          }
+        },
+        "required": ["id", "teamId", "inviterId", "inviteeId", "status", "createdAt", "expiresAt"]
+      },
+      "InvitationDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Invitation" },
+          {
+            "type": "object",
+            "properties": {
+              "team": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "format": "uuid" },
+                  "name": { "type": "string" }
+                }
+              },
+              "inviter": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "format": "uuid" },
+                  "name": { "type": "string" }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Schedule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "example": "스프린트 회의"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-05-10T09:00:00Z"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-05-10T10:00:00Z",
+            "description": "시작일시와 같거나 이후여야 함 (BR-70)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Scheduled", "Done", "Cancelled"]
+          },
+          "version": {
+            "type": "integer",
+            "description": "낙관적 잠금을 위한 버전 (동시 편집 충돌 방지)",
+            "example": 1
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": { "type": "string", "format": "uuid" },
+                "name": { "type": "string" }
+              }
+            },
+            "description": "담당자 목록 (해당 팀 소속 팀원만 지정 가능, BR-75)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "teamId", "createdBy", "title", "startAt", "endAt", "status", "version", "assignees", "createdAt", "updatedAt"]
+      },
+      "ScheduleAssignee": {
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["scheduleId", "userId"]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authorName": {
+            "type": "string",
+            "example": "이준호"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "example": "스프린트 회의를 13시로 변경할 수 있을까요?"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "chatId", "authorId", "authorName", "content", "createdAt"]
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recipientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["MESSAGE_RECEIVED", "INVITATION_RECEIVED", "INVITATION_RESPONDED"],
+            "description": "MESSAGE_RECEIVED: 팀원 메시지 전송 시 팀장에게 생성 / INVITATION_RECEIVED: 초대 수신 시 생성 / INVITATION_RESPONDED: 초대 수락·거절 시 팀장에게 생성"
+          },
+          "referenceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "원인 엔티티 ID (Message.id 또는 Invitation.id)"
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "recipientId", "type", "referenceId", "isRead", "createdAt"]
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["data", "message"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "오류 설명"
+          },
+          "code": {
+            "type": "string",
+            "description": "오류 코드 (선택적)"
+          }
+        },
+        "required": ["message"]
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "입력값 검증 실패"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": { "type": "string" },
+                "message": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["message", "errors"]
+      }
+    },
+    "responses": {
+      "400": {
+        "description": "잘못된 요청 (입력값 오류)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" },
+            "examples": {
+              "invalidInput": {
+                "value": {
+                  "message": "입력값 검증 실패",
+                  "errors": [
+                    { "field": "title", "message": "제목은 필수입니다" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "인증 실패 (토큰 없음 또는 만료)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "unauthorized": {
+                "value": { "message": "인증이 필요합니다" }
+              }
+            }
+          }
+        }
+      },
+      "403": {
+        "description": "권한 없음 (팀 미소속 또는 역할 부족)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "forbidden": {
+                "value": { "message": "접근 권한이 없습니다" }
+              }
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "리소스를 찾을 수 없음",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "notFound": {
+                "value": { "message": "리소스를 찾을 수 없습니다" }
+              }
+            }
+          }
+        }
+      },
+      "409": {
+        "description": "충돌 (중복 데이터 또는 상태 불일치)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "conflict": {
+                "value": { "message": "이미 존재하는 리소스입니다" }
+              }
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "처리 불가 엔티티 (비즈니스 규칙 위반)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "unprocessable": {
+                "value": { "message": "종료 시간은 시작 시간과 같거나 이후여야 합니다" }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "서버 내부 오류",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "serverError": {
+                "value": { "message": "서버 오류가 발생했습니다" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["인증 (auth)"],
+        "summary": "회원가입 (F-001)",
+        "description": "이메일과 비밀번호로 새 계정을 생성합니다. 회원가입 후 자동 로그인은 수행되지 않습니다 (BR-15).",
+        "operationId": "register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "example": "김인선"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "description": "최소 8자, 영문+숫자+특수문자 조합",
+                    "example": "Password123!"
+                  }
+                },
+                "required": ["name", "email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "회원가입 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "name": { "type": "string" },
+                        "email": { "type": "string", "format": "email" }
+                      }
+                    },
+                    "message": { "type": "string", "example": "회원가입이 완료되었습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400" },
+          "409": {
+            "description": "이미 사용 중인 이메일 (BR-15)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "duplicateEmail": {
+                    "value": { "message": "이미 사용 중인 이메일입니다" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["인증 (auth)"],
+        "summary": "로그인 (F-002)",
+        "description": "이메일과 비밀번호로 인증 후 Access Token(15분)과 Refresh Token(7일)을 반환합니다. Refresh Token은 HttpOnly 쿠키로 설정됩니다.",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "Password123!"
+                  }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "로그인 성공",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Refresh Token (HttpOnly, Secure, SameSite=Strict, 7일)",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accessToken": {
+                          "type": "string",
+                          "description": "JWT Access Token (만료: 15분)"
+                        },
+                        "user": { "$ref": "#/components/schemas/User" }
+                      }
+                    },
+                    "message": { "type": "string", "example": "로그인 성공" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400" },
+          "401": {
+            "description": "이메일 또는 비밀번호 불일치, 또는 비활성 계정",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "invalidCredentials": {
+                    "value": { "message": "이메일 또는 비밀번호가 올바르지 않습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["인증 (auth)"],
+        "summary": "로그아웃 (F-002)",
+        "description": "서버 측에서 Refresh Token을 무효화하고 세션을 종료합니다. 이후 해당 토큰으로 재발급 불가.",
+        "operationId": "logout",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "204": {
+            "description": "로그아웃 성공 (응답 본문 없음)"
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["인증 (auth)"],
+        "summary": "Access Token 재발급",
+        "description": "HttpOnly 쿠키의 Refresh Token을 검증하고 새 Access Token을 발급합니다.",
+        "operationId": "refreshToken",
+        "responses": {
+          "200": {
+            "description": "토큰 재발급 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accessToken": {
+                          "type": "string",
+                          "description": "새 JWT Access Token (만료: 15분)"
+                        }
+                      }
+                    },
+                    "message": { "type": "string", "example": "토큰이 재발급되었습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh Token 없음, 만료, 또는 서버 측 무효화됨",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "invalidRefreshToken": {
+                    "value": { "message": "유효하지 않은 Refresh Token입니다" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/teams": {
+      "get": {
+        "tags": ["팀 (teams)"],
+        "summary": "내 소속 팀 목록 조회 (F-004)",
+        "description": "인증된 사용자가 소속된 팀 목록과 각 팀에서의 역할을 반환합니다.",
+        "operationId": "getMyTeams",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "팀 목록 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TeamWithRole" }
+                    },
+                    "message": { "type": "string", "example": "팀 목록을 조회했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      },
+      "post": {
+        "tags": ["팀 (teams)"],
+        "summary": "팀 생성 (F-003)",
+        "description": "새 팀을 생성하고 요청자를 팀장(TEAM_LEADER)으로 자동 등록합니다.",
+        "operationId": "createTeam",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "example": "프론트엔드 팀"
+                  }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "팀 생성 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "name": { "type": "string" },
+                        "role": { "type": "string", "enum": ["TEAM_LEADER"] }
+                      }
+                    },
+                    "message": { "type": "string", "example": "팀이 생성되었습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400" },
+          "401": { "$ref": "#/components/responses/401" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/teams/{teamId}/members": {
+      "get": {
+        "tags": ["팀 (teams)"],
+        "summary": "팀원 목록 조회",
+        "description": "해당 팀에 소속된 모든 팀원과 팀장의 목록을 반환합니다. 팀 소속 사용자만 접근 가능합니다 (BR-60).",
+        "operationId": "getTeamMembers",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "팀 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "팀원 목록 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TeamMember" }
+                    },
+                    "message": { "type": "string", "example": "팀원 목록을 조회했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": { "$ref": "#/components/responses/403" },
+          "404": { "$ref": "#/components/responses/404" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/teams/{teamId}/invitations": {
+      "post": {
+        "tags": ["초대 (invitations)"],
+        "summary": "팀원 초대 발송 (F-005)",
+        "description": "팀장 전용. 이메일로 팀원을 초대합니다. 초대 유효 기한은 7일이며, 수신자에게 INVITATION_RECEIVED 알림이 생성됩니다 (BR-25, BR-90).",
+        "operationId": "createInvitation",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "팀 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "inviteeEmail": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "초대할 사용자의 이메일 (시스템에 가입된 이메일이어야 함)",
+                    "example": "member@example.com"
+                  }
+                },
+                "required": ["inviteeEmail"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "초대 발송 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Invitation" },
+                    "message": { "type": "string", "example": "초대를 발송했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "이미 팀 소속인 사용자를 초대하거나, 비소속 사용자 담당자 지정",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "alreadyMember": {
+                    "value": { "message": "이미 팀에 소속된 사용자입니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": {
+            "description": "팀장 권한 없음 (BR-20)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "notLeader": {
+                    "value": { "message": "팀장만 팀원을 초대할 수 있습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "팀 또는 이메일에 해당하는 사용자 없음",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "userNotFound": {
+                    "value": { "message": "등록되지 않은 이메일입니다" }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "중복 Pending 초대 (BR-25)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "duplicateInvitation": {
+                    "value": { "message": "이미 대기 중인 초대가 존재합니다" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/invitations": {
+      "get": {
+        "tags": ["초대 (invitations)"],
+        "summary": "내가 받은 초대 목록 조회",
+        "description": "인증된 사용자가 수신한 모든 초대 목록을 반환합니다. Pending, Accepted, Declined, Expired 상태 모두 포함됩니다.",
+        "operationId": "getMyInvitations",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["Pending", "Accepted", "Declined", "Expired"]
+            },
+            "description": "초대 상태 필터 (생략 시 전체 반환)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "초대 목록 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/InvitationDetail" }
+                    },
+                    "message": { "type": "string", "example": "초대 목록을 조회했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/invitations/{invitationId}/accept": {
+      "patch": {
+        "tags": ["초대 (invitations)"],
+        "summary": "초대 수락 (F-006)",
+        "description": "Pending 상태의 초대를 수락합니다. 수락 시 팀원(TEAM_MEMBER) 역할이 자동 부여되고, 초대 발송 팀장에게 INVITATION_RESPONDED 알림이 생성됩니다 (BR-90).",
+        "operationId": "acceptInvitation",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "초대 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "초대 수락 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Invitation" },
+                    "message": { "type": "string", "example": "초대를 수락했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "만료된 초대",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "expiredInvitation": {
+                    "value": { "message": "초대가 만료되었습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": {
+            "description": "본인 초대가 아닌 경우",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "notOwner": {
+                    "value": { "message": "본인의 초대만 처리할 수 있습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404" },
+          "409": {
+            "description": "이미 응답한 초대",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "alreadyResponded": {
+                    "value": { "message": "이미 응답한 초대입니다" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/invitations/{invitationId}/decline": {
+      "patch": {
+        "tags": ["초대 (invitations)"],
+        "summary": "초대 거절 (F-006)",
+        "description": "Pending 상태의 초대를 거절합니다. 거절 시 초대 발송 팀장에게 INVITATION_RESPONDED 알림이 생성됩니다 (BR-90).",
+        "operationId": "declineInvitation",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "초대 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "초대 거절 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Invitation" },
+                    "message": { "type": "string", "example": "초대를 거절했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "만료된 초대",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "expiredInvitation": {
+                    "value": { "message": "초대가 만료되었습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": {
+            "description": "본인 초대가 아닌 경우",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404" },
+          "409": {
+            "description": "이미 응답한 초대",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/teams/{teamId}/schedules": {
+      "get": {
+        "tags": ["일정 (schedules)"],
+        "summary": "팀 일정 목록 조회 (F-014, F-015)",
+        "description": "팀 일정을 월간 또는 주간 단위로 조회합니다. year+month 조합이면 월간, weekStart+weekEnd 조합이면 주간 조회입니다. 팀 소속 사용자만 접근 가능합니다 (BR-60).",
+        "operationId": "getTeamSchedules",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "팀 ID"
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "example": 2026 },
+            "description": "월간 조회 시 연도 (month와 함께 사용)"
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 12, "example": 5 },
+            "description": "월간 조회 시 월 (1~12)"
+          },
+          {
+            "name": "weekStart",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date", "example": "2026-05-04" },
+            "description": "주간 조회 시 시작일 (YYYY-MM-DD)"
+          },
+          {
+            "name": "weekEnd",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date", "example": "2026-05-10" },
+            "description": "주간 조회 시 종료일 (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "일정 목록 조회 성공 (해당 기간 일정 없으면 빈 배열 반환)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Schedule" }
+                    },
+                    "message": { "type": "string", "example": "일정 목록을 조회했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400" },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": { "$ref": "#/components/responses/403" },
+          "404": { "$ref": "#/components/responses/404" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      },
+      "post": {
+        "tags": ["일정 (schedules)"],
+        "summary": "일정 생성 (F-010) — 팀장 전용",
+        "description": "팀장 전용. 새 일정을 생성합니다. 종료일시는 시작일시와 같거나 이후여야 합니다 (BR-70). 담당자는 해당 팀 소속 팀원만 지정 가능합니다 (BR-75). 생성된 일정 상태는 Scheduled입니다.",
+        "operationId": "createSchedule",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "팀 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "example": "스프린트 회의"
+                  },
+                  "startAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-05-10T09:00:00Z"
+                  },
+                  "endAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-05-10T10:00:00Z",
+                    "description": "시작일시와 같거나 이후 (BR-70)"
+                  },
+                  "assigneeIds": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uuid" },
+                    "description": "담당자 userId 배열. 해당 팀 소속 팀원만 지정 가능 (BR-75). 생략 시 담당자 없음.",
+                    "example": []
+                  }
+                },
+                "required": ["title", "startAt", "endAt"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "일정 생성 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Schedule" },
+                    "message": { "type": "string", "example": "일정이 생성되었습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력값 오류 (제목 누락, 종료일시 < 시작일시, 비소속 담당자 지정)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" },
+                "examples": {
+                  "invalidTime": {
+                    "value": {
+                      "message": "입력값 검증 실패",
+                      "errors": [
+                        { "field": "endAt", "message": "종료 시간은 시작 시간과 같거나 이후여야 합니다" }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": {
+            "description": "팀장 권한 없음 (BR-20)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "notLeader": {
+                    "value": { "message": "팀장만 일정을 생성할 수 있습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/teams/{teamId}/schedules/{scheduleId}": {
+      "patch": {
+        "tags": ["일정 (schedules)"],
+        "summary": "일정 수정 (F-011) — 팀장 전용",
+        "description": "팀장 전용. 기존 일정을 수정합니다. version 필드는 낙관적 잠금(OQ-06)에 사용되며 필수입니다. 현재 version과 일치하지 않으면 409 Conflict를 반환합니다 (BR-70, BR-75).",
+        "operationId": "updateSchedule",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "팀 ID"
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "일정 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "description": "낙관적 잠금을 위한 현재 버전. 필수 (OQ-06)",
+                    "example": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "example": "스프린트 회의 (수정)"
+                  },
+                  "startAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-05-10T13:00:00Z"
+                  },
+                  "endAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-05-10T14:00:00Z"
+                  },
+                  "assigneeIds": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uuid" },
+                    "description": "담당자 userId 배열. 해당 팀 소속 팀원만 지정 가능 (BR-75)."
+                  }
+                },
+                "required": ["version"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "일정 수정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Schedule" },
+                    "message": { "type": "string", "example": "일정이 수정되었습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력값 오류 (version 누락, 종료일시 < 시작일시, 비소속 담당자)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": {
+            "description": "팀장 권한 없음 또는 타 팀 일정 접근 시도 (BR-20, BR-60)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404" },
+          "409": {
+            "description": "낙관적 잠금 충돌 (동시 편집, OQ-06)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "versionConflict": {
+                    "value": { "message": "일정이 다른 사용자에 의해 수정되었습니다. 최신 내용을 확인해 주세요." }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      },
+      "delete": {
+        "tags": ["일정 (schedules)"],
+        "summary": "일정 삭제 (F-012) — 팀장 전용",
+        "description": "팀장 전용. 일정을 삭제합니다. 삭제 후 복구 불가.",
+        "operationId": "deleteSchedule",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "팀 ID"
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "일정 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "일정 삭제 성공 (응답 본문 없음)"
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": {
+            "description": "팀장 권한 없음 또는 타 팀 일정 접근 시도 (BR-20, BR-60)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/teams/{teamId}/chats/{date}/messages": {
+      "get": {
+        "tags": ["채팅 (chats)"],
+        "summary": "메시지 조회 / Long Polling (F-018)",
+        "description": "특정 날짜의 채팅 메시지를 조회합니다.\n\n**Long Polling 동작 (after 파라미터 사용 시)**:\n- `after={lastMessageId}` 파라미터를 포함하면 Long Polling 모드로 동작합니다.\n- 해당 메시지 이후에 새 메시지가 있으면 즉시 반환합니다.\n- 새 메시지가 없으면 최대 20초 대기 후 빈 배열을 반환합니다.\n- 클라이언트는 응답 수신 즉시(빈 응답 포함) 다음 요청을 재전송해야 합니다.\n- 네트워크 오류 시 3초 후 재시도, 최대 3회.\n\n팀 소속 사용자만 접근 가능합니다 (BR-50, BR-60).",
+        "operationId": "getChatMessages",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "팀 ID"
+          },
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "date", "example": "2026-05-10" },
+            "description": "채팅 기준 날짜 (YYYY-MM-DD)"
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Long Polling: 이 메시지 ID 이후의 새 메시지를 조회. 생략 시 전체 메시지 조회."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "메시지 조회 성공. after 파라미터 사용 시 새 메시지 없으면 빈 배열 반환 (20초 대기 후).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Message" }
+                    },
+                    "message": { "type": "string", "example": "메시지를 조회했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": { "$ref": "#/components/responses/403" },
+          "404": { "$ref": "#/components/responses/404" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      },
+      "post": {
+        "tags": ["채팅 (chats)"],
+        "summary": "메시지 전송 (F-017)",
+        "description": "특정 날짜의 채팅방에 메시지를 전송합니다. 빈 문자열과 공백만으로 구성된 메시지는 전송 불가합니다 (BR-85). 팀원이 전송 시 해당 팀의 모든 팀장에게 MESSAGE_RECEIVED 알림이 생성됩니다 (BR-90). 전송된 메시지는 수정·삭제 불가합니다 (BR-35).",
+        "operationId": "sendMessage",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "팀 ID"
+          },
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "date", "example": "2026-05-10" },
+            "description": "채팅 기준 날짜 (YYYY-MM-DD). 메시지 전송 시각의 날짜와 다를 수 있음."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "메시지 내용. 빈 문자열 및 공백만 입력 불가 (BR-85).",
+                    "example": "스프린트 회의를 13시로 변경할 수 있을까요?"
+                  }
+                },
+                "required": ["content"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "메시지 전송 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Message" },
+                    "message": { "type": "string", "example": "메시지를 전송했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "빈 메시지 또는 공백만 입력 (BR-85)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "emptyContent": {
+                    "value": { "message": "메시지 내용은 비어 있을 수 없습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": { "$ref": "#/components/responses/403" },
+          "404": { "$ref": "#/components/responses/404" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["알림 (notifications)"],
+        "summary": "알림 목록 조회 (F-019)",
+        "description": "인증된 사용자의 모든 알림 목록을 생성일시 내림차순으로 반환합니다. 미읽음 배지 표시를 위한 unreadCount도 함께 반환합니다. 알림은 삭제되지 않으며, 읽음 처리로만 관리됩니다.",
+        "operationId": "getNotifications",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "알림 목록 조회 성공 (알림 없으면 빈 배열 반환)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "notifications": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/Notification" }
+                        },
+                        "unreadCount": {
+                          "type": "integer",
+                          "description": "미읽음 알림 수",
+                          "example": 3
+                        }
+                      }
+                    },
+                    "message": { "type": "string", "example": "알림 목록을 조회했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/notifications/{notificationId}/read": {
+      "patch": {
+        "tags": ["알림 (notifications)"],
+        "summary": "알림 읽음 처리 (F-020)",
+        "description": "특정 알림의 읽음 상태를 Read로 변경합니다. 본인의 알림만 읽음 처리 가능합니다.",
+        "operationId": "markNotificationRead",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "알림 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "읽음 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Notification" },
+                    "message": { "type": "string", "example": "알림을 읽음 처리했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "403": {
+            "description": "본인 알림이 아닌 경우",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "notOwner": {
+                    "value": { "message": "본인의 알림만 읽음 처리할 수 있습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "tags": ["알림 (notifications)"],
+        "summary": "전체 알림 읽음 처리",
+        "description": "인증된 사용자의 모든 미읽음 알림을 일괄로 읽음 처리합니다.",
+        "operationId": "markAllNotificationsRead",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "전체 읽음 처리 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "updatedCount": {
+                          "type": "integer",
+                          "description": "읽음 처리된 알림 수",
+                          "example": 5
+                        }
+                      }
+                    },
+                    "message": { "type": "string", "example": "모든 알림을 읽음 처리했습니다" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401" },
+          "500": { "$ref": "#/components/responses/500" }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "인증 (auth)",
+      "description": "회원가입, 로그인, 로그아웃, 토큰 재발급"
+    },
+    {
+      "name": "팀 (teams)",
+      "description": "팀 생성, 조회, 팀원 관리"
+    },
+    {
+      "name": "초대 (invitations)",
+      "description": "팀원 초대 발송, 수락, 거절"
+    },
+    {
+      "name": "일정 (schedules)",
+      "description": "팀 일정 CRUD (팀장 전용 생성·수정·삭제)"
+    },
+    {
+      "name": "채팅 (chats)",
+      "description": "날짜별 채팅 메시지 전송·조회 (Long Polling 지원)"
+    },
+    {
+      "name": "알림 (notifications)",
+      "description": "인앱 알림 조회 및 읽음 처리"
+    }
+  ]
+}

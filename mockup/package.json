@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "express": "^5.2.1",
+    "nodemon": "^3.1.14",
+    "openapi-mock-express-middleware": "^4.4.0",
+    "swagger-ui-express": "^5.0.1"
+  }
+}
